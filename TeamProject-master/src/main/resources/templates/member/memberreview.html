@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html
+  lang="en"
+  xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+  xmlns:th="http://www.thymeleaf.org"
+  layout:decorate="~{/layout/layout.html}"
+>
+  <head>
+    <title>LOGGED USER INFO</title>
+  </head>
+  <body>
+    <div
+      class="formContainer"
+      id="contents"
+      layout:fragment="contents"
+      style="z-index: 99"
+    >
+      <div class="row">
+        <div class="col-2">
+          <div>
+            <a href="/member/memberinfo"
+              ><h5 style="font-weight: normal">User Information</h5></a
+            >
+          </div>
+          <hr />
+
+          <div>
+            <a href="/member/memberreservation"
+              ><h5 style="font-weight: normal">My Reservation</h5></a
+            >
+          </div>
+          <hr />
+
+          <div>
+            <a href="/member/memberrequest"
+              ><h5 style="font-weight: normal">My Request</h5></a
+            >
+          </div>
+          <hr />
+          <div>
+            <a href="/member/memberrequest" style="color: rgb(5, 99, 193)"
+              ><h4>My <br />Review</h4></a
+            >
+          </div>
+        </div>
+        <input
+          type="hidden"
+          id="loggedMemberNo"
+          th:value="${session.loggedMember.no}"
+        />
+        <div id="" class="reserv col ms-5">
+          <h2>My Review</h2>
+          <div class="row">
+            <div class="col-7">
+              <hr />
+              <table width="100%" class="table" id="reviewTable">
+                <thead>
+                  <tr class="table-dark" style="font-weight: 700">
+                    <th>Rating</th>
+                    <th>Package Name</th>
+                    <th>Review Title</th>
+                    <th>Date</th>
+                  </tr>
+                </thead>
+                <tbody id="reviewList"></tbody>
+              </table>
+            </div>
+            <div class="col-5" id="reviewDetails"></div>
+          </div>
+        </div>
+      </div>
+      <div id="alarmMsg" class="adminAlarm" style="display: block"></div>
+      <script>
+        /*=======================================================================*/
+        /*=========================== INFO REVIEW START ========================*/
+        // Review 화면 로드시 자동으로 Review 목록 띄우기
+        reviewList();
+        $("#btnReviewOngoing").on("click", function (e) {
+          reviewList();
+        });
+
+        function reviewList() {
+          const sendData = {
+            no: $("#loggedMemberNo").val(),
+          };
+          $.ajax({
+            url: "/reservation/getUserReview",
+            data: sendData,
+            type: "POST",
+            success: function (response) {
+              console.log(response);
+              let tempHtml = "";
+              $.each(response, function (idx, item) {
+                tempHtml += `     
+                    <tr id="selectedReview" class="btn-outline-secondary" style="color:black" data-no="${item.reviewNo}">
+                      <td style="color:#ccac00; font-weight: 700;">${item.ratingAVG}</td>
+                      <td style="font-weight: 700;"><a href="/package/pkgdetailview?pkgNo=${item.pkgNo}" target="_blank">${item.pkgName}</a></td>
+                      <td style="font-weight: 700;">${item.reviewTitle}</td>
+                      <td >${item.reviewDate}</td>
+                    </tr>
+                `;
+              });
+              $("#reviewList").html(tempHtml);
+            },
+          });
+        }
+        // Review 클릭시 해당 Review의 내용 표시
+        $("#reviewTable").on("click", "#selectedReview", function () {
+          const sendData = {
+            reviewNo: $(this).data("no"),
+          };
+          $.ajax({
+            url: "/package/getSelectedReview",
+            data: sendData,
+            type: "POST",
+            success: function (response) {
+              console.log(response);
+              let tempHtml = "";
+              tempHtml += `
+                <hr>
+                <table width="100%" class="table table-bordered" id="reviewTable" style="border-color:#8c8e90;">
+                  <thead>
+                    <tr class="table-dark" style="font-weight:700;">
+                      <th width="35%">Rating Details</th>
+                      <th>Review Contents</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td class="text-start" style="font-size:13px;">
+                      <strong>General Service: </strong><p style="color:#ccac00; font-size:16px; font-weight:700; text-align:right; margin:0;">${response.ratingGS}/5</p>
+                      <br>
+                      <strong>Food & Accommodation: </strong><p style="color:#ccac00; font-size:16px; font-weight:700; text-align:right; margin:0;">${response.ratingFA}/5</p>
+                      <br>
+                      <strong>Cost-Effectiveness: </strong><p style="color:#ccac00; font-size:16px; font-weight:700; text-align:right; margin:0;">${response.ratingCE}/5</p>
+                      </td>
+                      <td class="text-start"><br><span style="font-size: 14px; color:black;">${response.reviewContents}</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+                `;
+              $("#reviewDetails").html(tempHtml);
+            },
+          });
+        });
+        /*=========================== INFO REVIEW END ========================*/
+        /*=======================================================================*/
+
+        /*=======================================================================*/
+        /*=========================== INFO ALERT START ==========================*/
+        // 화면 알림창 관련 Json 받아오기
+        getAlert();
+        function getAlert() {
+          const sendData = {
+            userNo: $("#loggedMemberNo").val(),
+          };
+          $.ajax({
+            url: "/member/memberAlert",
+            data: sendData,
+            type: "POST",
+            success: function (response) {
+              console.log(response);
+              if (response.msg) {
+                $("#alarmMsg").attr("style", "opacity:1 !important");
+                $("#alarmMsg").fadeIn(3000).fadeOut(9000);
+                const tempHtml = `
+              <div>
+                <div style="text-align:center;"><span>${response.msg}</span></div>
+                <div class="row text-center mt-2">
+                  <div class="col">
+                    <button id="btnAlarmConfirm" class="btn btn-outline-danger" style="padding:5px 10px; font-size:20px;">
+                      Never show this again
+                    </button>
+                    <button id="btnAlarmClose" class="btn btn-outline-dark" style="padding:5px 10px; font-size:20px;">
+                      Close
+                    </button>
+                </div>
+                </div>
+              </div>
+              `;
+                $("#alarmMsg").html(tempHtml);
+                gsap.to("#alarmMsg", { y: -110, duration: 0.75 });
+              } else {
+              }
+            },
+          });
+        }
+
+        // 화면 알림 메시지 띄우기
+        $("#alarmMsg").on("click", "#btnAlarmClose", function () {
+          $("#alarmMsg").css("display", "none");
+        });
+
+        $("#alarmMsg").on("click", "#btnAlarmConfirm", function () {
+          $("#alarmMsg").css("display", "none");
+          const sendData = {
+            userNo: $("#loggedMemberNo").val(),
+          };
+          $.ajax({
+            url: "/member/memberAlertClear",
+            data: sendData,
+            type: "POST",
+            success: function (response) {
+              console.log(response);
+            },
+          });
+        });
+        /*=========================== INFO ALERT END ============================*/
+        /*=======================================================================*/
+      </script>
+    </div>
+  </body>
+</html>
